@@ -1,0 +1,7 @@
+coverage.txt
+.projectile-cache.eld
+*.swp
+localai-models/
+.aider*
+CLAUDE.md
+GEMINI.md

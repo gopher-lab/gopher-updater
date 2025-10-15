@@ -34,7 +34,8 @@ var _ = Describe("Client Integration", func() {
 	Describe("GetLatestBlockHeight", func() {
 		It("should return the correct block height on a valid response", func() {
 			mux.HandleFunc("/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, `{"block":{"header":{"height":"12345"}}}`)
+				_, err := fmt.Fprint(w, `{"block":{"header":{"height":"12345"}}}`)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			height, err := client.GetLatestBlockHeight(ctx)
@@ -53,7 +54,8 @@ var _ = Describe("Client Integration", func() {
 
 		It("should return an error on malformed JSON", func() {
 			mux.HandleFunc("/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, `{"block":{"header":{"height":malformed}}}`)
+				_, err := fmt.Fprint(w, `{"block":{"header":{"height":malformed}}}`)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			_, err := client.GetLatestBlockHeight(ctx)
@@ -64,7 +66,7 @@ var _ = Describe("Client Integration", func() {
 	Describe("GetUpgradePlans", func() {
 		It("should correctly parse and filter for passed software upgrade proposals", func() {
 			mux.HandleFunc("/cosmos/gov/v1beta1/proposals", func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, `{
+				_, err := fmt.Fprint(w, `{
 					"proposals": [
 						{
 							"status": "PROPOSAL_STATUS_PASSED",
@@ -88,6 +90,7 @@ var _ = Describe("Client Integration", func() {
 						}
 					]
 				}`)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			plans, err := client.GetUpgradePlans(ctx)

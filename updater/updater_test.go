@@ -161,3 +161,56 @@ var _ = Describe("Updater", func() {
 		})
 	})
 })
+
+// MockCosmosClient is a mock implementation of the Cosmos client for testing.
+type MockCosmosClient struct {
+	getUpgradePlansFunc      func(ctx context.Context) ([]cosmos.Plan, error)
+	getLatestBlockHeightFunc func(ctx context.Context) (int64, error)
+}
+
+func (m *MockCosmosClient) GetUpgradePlans(ctx context.Context) ([]cosmos.Plan, error) {
+	if m.getUpgradePlansFunc != nil {
+		return m.getUpgradePlansFunc(ctx)
+	}
+	return nil, nil
+}
+
+func (m *MockCosmosClient) GetLatestBlockHeight(ctx context.Context) (int64, error) {
+	if m.getLatestBlockHeightFunc != nil {
+		return m.getLatestBlockHeightFunc(ctx)
+	}
+	return 0, nil
+}
+
+// MockDockerHubClient is a mock implementation of the DockerHub client for testing.
+type MockDockerHubClient struct {
+	mu            sync.Mutex
+	retagCalls    []RetagCall
+	tagExistsFunc func(ctx context.Context, repoPath, tag string) (bool, error)
+}
+
+type RetagCall struct {
+	RepoPath  string
+	SourceTag string
+	TargetTag string
+}
+
+func (m *MockDockerHubClient) RetagImage(ctx context.Context, repoPath, sourceTag, targetTag string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.retagCalls = append(m.retagCalls, RetagCall{RepoPath: repoPath, SourceTag: sourceTag, TargetTag: targetTag})
+	return nil
+}
+
+func (m *MockDockerHubClient) TagExists(ctx context.Context, repoPath, tag string) (bool, error) {
+	if m.tagExistsFunc != nil {
+		return m.tagExistsFunc(ctx, repoPath, tag)
+	}
+	return false, nil
+}
+
+func (m *MockDockerHubClient) RetagCalls() []RetagCall {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.retagCalls
+}

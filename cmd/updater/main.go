@@ -19,15 +19,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var cfg config.Config
-	err := envconfig.Process(ctx, &cfg)
+	cfg, err := config.New(ctx)
 	if err != nil {
-		xlog.Error(err, "failed to process config")
-		os.Exit(1)
-	}
-
-	if err = xlog.Init(cfg.LogLevel, cfg.LogFormat); err != nil {
-		xlog.Error(err, "failed to initialize logger")
+		xlog.Error("failed to process config", "err", err)
 		os.Exit(1)
 	}
 
@@ -39,14 +33,21 @@ func main() {
 		cancel()
 	}()
 
-	upd, err := updater.New(cfg)
-	if err != nil {
-		xlog.Error(err, "failed to create updater")
-		os.Exit(1)
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        cfg.HTTPMaxIdleConns,
+			MaxIdleConnsPerHost: cfg.HTTPMaxIdleConnsPerHost,
+			MaxConnsPerHost:     cfg.HTTPMaxConnsPerHost,
+		},
 	}
 
-	if err = upd.Start(ctx); err != nil {
-		xlog.Error(err, "updater failed")
+	cosmosClient := cosmos.NewClient(cfg.RPCURL, httpClient)
+	dockerhubClient := dockerhub.NewClient(cfg.DockerHubUser, cfg.DockerHubPassword, httpClient)
+
+	upd := updater.New(cosmosClient, dockerhubClient, cfg)
+
+	if err = upd.Run(ctx); err != nil && err != context.Canceled {
+		xlog.Error("updater failed", "err", err)
 	}
 
 	xlog.Info("gopher-updater stopped gracefully")

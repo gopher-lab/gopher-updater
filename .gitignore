@@ -5,3 +5,4 @@ localai-models/
 .aider*
 CLAUDE.md
 GEMINI.md
+/gopher-updater

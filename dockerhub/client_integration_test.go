@@ -24,7 +24,7 @@ var _ = Describe("Client Integration", func() {
 		ctx = context.Background()
 		mux = http.NewServeMux()
 		server = httptest.NewServer(mux)
-		
+
 		client = dockerhub.NewClient("user", "pass", server.Client())
 		client.AuthBaseURL = server.URL
 		client.RegistryBaseURL = server.URL
@@ -87,7 +87,7 @@ var _ = Describe("Client Integration", func() {
 			mux.HandleFunc("/v2/my/repo/manifests/target-tag", func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.Method).To(Equal(http.MethodPut))
 				Expect(r.Header.Get("Content-Type")).To(Equal(manifestContentType))
-				
+
 				body := make([]byte, len(manifestContent))
 				_, _ = r.Body.Read(body)
 				Expect(string(body)).To(Equal(manifestContent))

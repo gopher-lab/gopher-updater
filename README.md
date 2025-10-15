@@ -1,4 +1,4 @@
-# gopher-updater
+gopher-updater
 
 `gopher-updater` is a companion tool for GitOps-driven Cosmos chains.
 
@@ -18,19 +18,30 @@ All configuration is done by means of environment variables:
 
 ### Docker parameters
 
-`DOCKERHUB_USER` - User ID to connect to DockerHub
+`DOCKERHUB_USER` - User ID to connect to DockerHub. This is mandatory.
 
-`DOCKERHUB_PASSWORD` - User ID to connect to DockerHub
+`DOCKERHUB_PASSWORD` - User ID to connect to DockerHub. This is mandatory.
 
-`REPO_PATH` - Path to the repo within the DockerHub registry (e.g. `gopher-lab/gopher`). There is no default, it is mandatory.
+`REPO_PATH` - Path to the repo within the DockerHub registry (e.g. `gopher-lab/gopher`). This is mandatory.
 
 `SOURCE_PREFIX` - Prefix to the source tag (the tag that CI publishes to). The version number in the governance proposal will be appended to this. Default is `release-`.
 
- `TARGET_PREFIX` - Prefix to the tartet tag (the tag that will be created and that Flux knows about). There is no default, it is mandatory.
+ `TARGET_PREFIX` - Prefix to the tartet tag (the tag that will be created and that Flux knows about). This is mandatory.
 
 ### Other parameters
 
 `POLL_INTERVAL` - How long to wait between Cosmos chain polls, in Golang Duration format. The default is `1m`.
+
+`HTTP_PORT` - The port on which to expose health, metrics, and profiling endpoints. Default is `8080`.
+
+## Observability
+
+The service exposes several endpoints for monitoring and debugging:
+
+*   `GET /healthz`: A liveness probe that returns `200 OK` if the service is running.
+*   `GET /readyz`: A readiness probe that returns `200 OK` if the service can connect to both the Cosmos chain and DockerHub. Otherwise, it returns `503 Service Unavailable`.
+*   `GET /metrics`: Exposes Prometheus metrics for monitoring.
+*   `GET /debug/pprof/`: Exposes Go's standard profiling endpoints.
 
 ## Usage
 
@@ -40,9 +51,10 @@ All configuration is done by means of environment variables:
 docker run \
   -e REPO_PATH="my/repo" \
   -e TARGET_PREFIX="mainnet-" \
-  -e DOCKERHUB_USERNAME="myuser" \
+  -e DOCKERHUB_USER="myuser" \
   -e DOCKERHUB_PASSWORD="mypassword" \
-  -e GRPC_ADDRESS="grpc.example.com:9090" \
+  -e RPC_URL="http://my-cosmos-node:1317" \
+  -p 8080:8080 \
   gopher-updater:latest
 ```
 
@@ -66,12 +78,15 @@ spec:
       containers:
       - name: gopher-updater
         image: gopher-updater:latest
+        ports:
+        - containerPort: 8080
+          name: http
         env:
         - name: REPO_PATH
           value: "my/repo"
         - name: TARGET_PREFIX
           value: "mainnet-"
-        - name: DOCKERHUB_USERNAME
+        - name: DOCKERHUB_USER
           valueFrom:
             secretKeyRef:
               name: dockerhub
@@ -81,15 +96,24 @@ spec:
             secretKeyRef:
               name: dockerhub
               key: password
-        - name: GRPC_ADDRESS
-          value: "grpc.example.com:9090"
+        - name: RPC_URL
+          value: "http://my-cosmos-node:1317"
+        - name: HTTP_PORT
+          value: "8080"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: http
 ```
 
 ## Development
 
 ```bash
 make lint
-make build
 make test
 make run
 ```

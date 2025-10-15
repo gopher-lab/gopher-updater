@@ -40,11 +40,60 @@ func main() {
 		cancel()
 	}()
 
-	// Start HTTP server
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        cfg.HTTPMaxIdleConns,
+			MaxIdleConnsPerHost: cfg.HTTPMaxIdleConnsPerHost,
+			MaxConnsPerHost:     cfg.HTTPMaxConnsPerHost,
+		},
+	}
+
+	cosmosClient := cosmos.NewClient(cfg.RPCURL, httpClient)
+	dockerhubClient := dockerhub.NewClient(cfg.DockerHubUser, cfg.DockerHubPassword, httpClient)
+	checker := health.NewChecker(cosmosClient, dockerhubClient, cfg.RepoPath)
+
+	// Start HTTP server and set up graceful shutdown
+	e := startHTTPServer(cfg, checker, cancel)
+	defer func() {
+		xlog.Info("shutting down http server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := e.Shutdown(shutdownCtx); err != nil {
+			xlog.Error("http server shutdown failed", "err", err)
+		}
+	}()
+
+	upd := updater.New(cosmosClient, dockerhubClient, cfg)
+
+	// Run the main updater loop
+	go func() {
+		if err := upd.Run(ctx); err != nil && err != context.Canceled {
+			xlog.Error("updater failed", "err", err)
+		}
+		cancel() // if the updater stops for any reason, cancel the context
+	}()
+
+	<-ctx.Done() // Wait for shutdown signal or updater to finish
+
+	xlog.Info("gopher-updater stopped gracefully")
+}
+
+func startHTTPServer(cfg *config.Config, checker *health.Checker, cancel context.CancelFunc) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
+
+	// --- Routes ---
 	e.GET("/healthz", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	})
+	e.GET("/readyz", func(c echo.Context) error {
+		if err := checker.Ready(c.Request().Context()); err != nil {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"status": "unready",
+				"error":  err.Error(),
+			})
+		}
+		return c.JSON(http.StatusOK, map[string]string{"status": "ready"})
 	})
 	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 
@@ -65,50 +114,5 @@ func main() {
 		}
 	}()
 
-	// Graceful shutdown for http server
-	defer func() {
-		xlog.Info("shutting down http server")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := e.Shutdown(shutdownCtx); err != nil {
-			xlog.Error("http server shutdown failed", "err", err)
-		}
-	}()
-
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			MaxIdleConns:        cfg.HTTPMaxIdleConns,
-			MaxIdleConnsPerHost: cfg.HTTPMaxIdleConnsPerHost,
-			MaxConnsPerHost:     cfg.HTTPMaxConnsPerHost,
-		},
-	}
-
-	cosmosClient := cosmos.NewClient(cfg.RPCURL, httpClient)
-	dockerhubClient := dockerhub.NewClient(cfg.DockerHubUser, cfg.DockerHubPassword, httpClient)
-
-	// Set up readiness checker
-	checker := health.NewChecker(cosmosClient, dockerhubClient, cfg.RepoPath)
-	e.GET("/readyz", func(c echo.Context) error {
-		if err := checker.Ready(c.Request().Context()); err != nil {
-			return c.JSON(http.StatusServiceUnavailable, map[string]string{
-				"status": "unready",
-				"error":  err.Error(),
-			})
-		}
-		return c.JSON(http.StatusOK, map[string]string{"status": "ready"})
-	})
-
-	upd := updater.New(cosmosClient, dockerhubClient, cfg)
-
-	// Run the main updater loop
-	go func() {
-		if err := upd.Run(ctx); err != nil && err != context.Canceled {
-			xlog.Error("updater failed", "err", err)
-		}
-		cancel() // if the updater stops for any reason, cancel the context
-	}()
-
-	<-ctx.Done() // Wait for shutdown signal or updater to finish
-
-	xlog.Info("gopher-updater stopped gracefully")
+	return e
 }

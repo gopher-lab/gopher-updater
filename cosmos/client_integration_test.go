@@ -107,7 +107,6 @@ var _ = Describe("Client Integration", func() {
 			Expect(plans).To(BeEmpty())
 		})
 
-
 		It("should return an error on a non-200 status code", func() {
 			mux.HandleFunc("/cosmos/gov/v1beta1/proposals", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.comcom/sethvargo/go-envconfig"
+	"github.com/sethvargo/go-envconfig"
 )
 
 // Config holds the application configuration.
@@ -20,7 +20,7 @@ type Config struct {
 	HTTPMaxIdleConns        int    `env:"HTTP_MAX_IDLE_CONNS,default=100"`
 	HTTPMaxIdleConnsPerHost int    `env:"HTTP_MAX_IDLE_CONNS_PER_HOST,default=10"`
 	HTTPMaxConnsPerHost     int    `env:"HTTP_MAX_CONNS_PER_HOST,default=10"`
-	HTTPPort                string `env:"HTTP_PORT,default=8081"`
+	HTTPPort                string `env:"HTTP_PORT,default=8080"`
 }
 
 // New loads the configuration from environment variables.

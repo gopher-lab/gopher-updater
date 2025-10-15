@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/sethvargo/go-envconfig"
+	"github.comcom/sethvargo/go-envconfig"
 )
 
 // Config holds the application configuration.
@@ -17,9 +17,10 @@ type Config struct {
 	TargetPrefix      string        `env:"TARGET_PREFIX,required"`
 	PollInterval      time.Duration `env:"POLL_INTERVAL,default=1m"`
 
-	HTTPMaxIdleConns        int `env:"HTTP_MAX_IDLE_CONNS,default=100"`
-	HTTPMaxIdleConnsPerHost int `env:"HTTP_MAX_IDLE_CONNS_PER_HOST,default=10"`
-	HTTPMaxConnsPerHost     int `env:"HTTP_MAX_CONNS_PER_HOST,default=10"`
+	HTTPMaxIdleConns        int    `env:"HTTP_MAX_IDLE_CONNS,default=100"`
+	HTTPMaxIdleConnsPerHost int    `env:"HTTP_MAX_IDLE_CONNS_PER_HOST,default=10"`
+	HTTPMaxConnsPerHost     int    `env:"HTTP_MAX_CONNS_PER_HOST,default=10"`
+	HTTPPort                string `env:"HTTP_PORT,default=8081"`
 }
 
 // New loads the configuration from environment variables.

@@ -39,7 +39,8 @@ var _ = Describe("Client Integration", func() {
 			Expect(ok).To(BeTrue())
 			Expect(user).To(Equal("user"))
 			Expect(pass).To(Equal("pass"))
-			fmt.Fprint(w, `{"token":"a-dummy-token"}`)
+			_, err := fmt.Fprint(w, `{"token":"a-dummy-token"}`)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
@@ -80,7 +81,8 @@ var _ = Describe("Client Integration", func() {
 			mux.HandleFunc("/v2/my/repo/manifests/source-tag", func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.Method).To(Equal(http.MethodGet))
 				w.Header().Set("Content-Type", manifestContentType)
-				fmt.Fprint(w, manifestContent)
+				_, err := fmt.Fprint(w, manifestContent)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			// Handle PUT for the target tag
@@ -110,7 +112,8 @@ var _ = Describe("Client Integration", func() {
 
 		It("should return an error if putting the target manifest fails", func() {
 			mux.HandleFunc("/v2/my/repo/manifests/source-tag-put-fail", func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, "{}")
+				_, err := fmt.Fprint(w, "{}")
+				Expect(err).NotTo(HaveOccurred())
 			})
 			mux.HandleFunc("/v2/my/repo/manifests/target-tag-fail", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)

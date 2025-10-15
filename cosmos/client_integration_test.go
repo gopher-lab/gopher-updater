@@ -102,7 +102,8 @@ var _ = Describe("Client Integration", func() {
 
 		It("should return an empty slice when no passed upgrade proposals are found", func() {
 			mux.HandleFunc("/cosmos/gov/v1beta1/proposals", func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, `{"proposals": []}`)
+				_, err := fmt.Fprint(w, `{"proposals": []}`)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			plans, err := client.GetUpgradePlans(ctx)

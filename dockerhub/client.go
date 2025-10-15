@@ -18,17 +18,21 @@ type ClientInterface interface {
 
 // Client for interacting with the DockerHub API.
 type Client struct {
-	user       string
-	password   string
-	httpClient *http.Client
+	user            string
+	password        string
+	httpClient      *http.Client
+	AuthBaseURL     string
+	RegistryBaseURL string
 }
 
 // NewClient creates a new DockerHub client.
 func NewClient(user, password string, httpClient *http.Client) *Client {
 	return &Client{
-		user:       user,
-		password:   password,
-		httpClient: httpClient,
+		user:            user,
+		password:        password,
+		httpClient:      httpClient,
+		AuthBaseURL:     "https://auth.docker.io",
+		RegistryBaseURL: "https://registry-1.docker.io",
 	}
 }
 
@@ -39,7 +43,7 @@ type authResponse struct {
 }
 
 func (c *Client) getBearerToken(ctx context.Context, scope string) (string, error) {
-	authURL := fmt.Sprintf("https://auth.docker.io/token?service=registry.docker.io&scope=%s", url.QueryEscape(scope))
+	authURL := fmt.Sprintf("%s/token?service=registry.docker.io&scope=%s", c.AuthBaseURL, url.QueryEscape(scope))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, authURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create auth request: %w", err)
@@ -71,9 +75,7 @@ func (c *Client) TagExists(ctx context.Context, repoPath, tag string) (bool, err
 		return false, fmt.Errorf("failed to get auth token: %w", err)
 	}
 
-	const registryAPI = "https://registry-1.docker.io/v2"
-
-	manifestURL := fmt.Sprintf("%s/%s/manifests/%s", registryAPI, repoPath, tag)
+	manifestURL := fmt.Sprintf("%s/v2/%s/manifests/%s", c.RegistryBaseURL, repoPath, tag)
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, manifestURL, nil)
 	if err != nil {
 		return false, fmt.Errorf("failed to create manifest head request: %w", err)
@@ -105,9 +107,7 @@ func (c *Client) RetagImage(ctx context.Context, repoPath, sourceTag, targetTag 
 		return fmt.Errorf("failed to get auth token: %w", err)
 	}
 
-	const registryAPI = "https://registry-1.docker.io/v2"
-
-	manifestURL := fmt.Sprintf("%s/%s/manifests/%s", registryAPI, repoPath, sourceTag)
+	manifestURL := fmt.Sprintf("%s/v2/%s/manifests/%s", c.RegistryBaseURL, repoPath, sourceTag)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, manifestURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create manifest get request: %w", err)
@@ -133,7 +133,7 @@ func (c *Client) RetagImage(ctx context.Context, repoPath, sourceTag, targetTag 
 	contentType := resp.Header.Get("Content-Type")
 
 	// Now PUT the manifest with the new tag
-	targetURL := fmt.Sprintf("%s/%s/manifests/%s", registryAPI, repoPath, targetTag)
+	targetURL := fmt.Sprintf("%s/v2/%s/manifests/%s", c.RegistryBaseURL, repoPath, targetTag)
 	req, err = http.NewRequestWithContext(ctx, http.MethodPut, targetURL, bytes.NewBuffer(manifest))
 	if err != nil {
 		return fmt.Errorf("failed to create manifest put request: %w", err)

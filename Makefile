@@ -25,17 +25,11 @@ run:
 	HTTP_MAX_IDLE_CONNS=$(HTTP_MAX_IDLE_CONNS) \
 	HTTP_MAX_IDLE_CONNS_PER_HOST=$(HTTP_MAX_IDLE_CONNS_PER_HOST) \
 	HTTP_MAX_CONNS_PER_HOST=$(HTTP_MAX_CONNS_PER_HOST) \
-	go run ./cmd/updater
-
-	@go build -o gopher-updater ./cmd/updater
-
-.PHONY: docker-build
-docker-build: ## Build the docker image
-	@docker build -t gopher-updater:latest .
-
-.PHONY: run
-run: ## Run the updater
 	@go run ./cmd/updater
+
+.PHONY: build
+build:
+	@go build -o gopher-updater ./cmd/updater
 
 .PHONY: test
 test:
@@ -50,3 +44,7 @@ lint:
 	gofmt -s -w . && git diff --exit-code
 	go vet ./...
 	golangci-lint run
+
+.PHONY: docker-build
+docker-build: ## Build the docker image
+	@docker build -t gopher-updater:latest .

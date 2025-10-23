@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -16,12 +17,12 @@ type ClientInterface interface {
 
 // Client for interacting with the Cosmos REST API.
 type Client struct {
-	rpcURL     string
+	rpcURL     *url.URL
 	httpClient *http.Client
 }
 
 // NewClient creates a new Cosmos client.
-func NewClient(rpcURL string, httpClient *http.Client) *Client {
+func NewClient(rpcURL *url.URL, httpClient *http.Client) *Client {
 	return &Client{
 		rpcURL:     rpcURL,
 		httpClient: httpClient,
@@ -47,7 +48,7 @@ type LatestBlockResponse struct {
 
 // GetLatestBlockHeight returns the latest block height of the chain.
 func (c *Client) GetLatestBlockHeight(ctx context.Context) (int64, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.rpcURL+"/blocks/latest", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.rpcURL.JoinPath("/blocks/latest").String(), nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -95,7 +96,7 @@ type ProposalsResponse struct {
 
 // GetUpgradePlans finds all passed software upgrade proposals and returns their plans.
 func (c *Client) GetUpgradePlans(ctx context.Context) ([]Plan, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.rpcURL+"/cosmos/gov/v1beta1/proposals", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.rpcURL.JoinPath("/cosmos/gov/v1beta1/proposals").String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

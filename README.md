@@ -14,7 +14,7 @@ All configuration is done by means of environment variables:
 
 ### Connectivity
 
-`RPC_URL` - URL to connect to the Cosmos chain REST API. Default is `http://localhost:1317`.
+`API_URL` - URL to connect to the Cosmos chain REST API. Default is `http://localhost:1317`.
 
 ### Docker parameters
 
@@ -32,12 +32,13 @@ All configuration is done by means of environment variables:
 
 `POLL_INTERVAL` - How long to wait between Cosmos chain polls, in Golang Duration format. The default is `1m`.
 
+`DRY_RUN` - If set to `true`, the application will not perform any retagging operations on DockerHub. Instead, it will log the actions it would have taken. This is useful for testing and validation. Default is `false`.
+
 `HTTP_PORT` - The port on which to expose health, metrics, and profiling endpoints. Default is `8080`.
 
 ## Observability
 
 The service exposes several endpoints for monitoring and debugging:
-
 *   `GET /healthz`: A liveness probe that returns `200 OK` if the service is running.
 *   `GET /readyz`: A readiness probe that returns `200 OK` if the service can connect to both the Cosmos chain and DockerHub. Otherwise, it returns `503 Service Unavailable`.
 *   `GET /metrics`: Exposes Prometheus metrics for monitoring.
@@ -53,7 +54,7 @@ docker run \
   -e TARGET_PREFIX="mainnet-" \
   -e DOCKERHUB_USER="myuser" \
   -e DOCKERHUB_PASSWORD="mypassword" \
-  -e RPC_URL="http://my-cosmos-node:1317" \
+  -e API_URL="http://my-cosmos-node:1317" \
   -p 8080:8080 \
   gopher-updater:latest
 ```
@@ -96,7 +97,7 @@ spec:
             secretKeyRef:
               name: dockerhub
               key: password
-        - name: RPC_URL
+        - name: API_URL
           value: "http://my-cosmos-node:1317"
         - name: HTTP_PORT
           value: "8080"
@@ -109,7 +110,6 @@ spec:
             path: /readyz
             port: http
 ```
-
 ## Development
 
 ```bash

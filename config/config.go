@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"net/url"
 	"time"
 
 	"github.com/sethvargo/go-envconfig"
@@ -9,13 +10,14 @@ import (
 
 // Config holds the application configuration.
 type Config struct {
-	RPCURL            string        `env:"RPC_URL,default=http://localhost:1317"`
+	APIURL            *url.URL      `env:"API_URL,default=http://localhost:1317"`
 	DockerHubUser     string        `env:"DOCKERHUB_USER,required"`
 	DockerHubPassword string        `env:"DOCKERHUB_PASSWORD,required"`
 	RepoPath          string        `env:"REPO_PATH,required"`
 	SourcePrefix      string        `env:"SOURCE_PREFIX,default=release-"`
 	TargetPrefix      string        `env:"TARGET_PREFIX,required"`
 	PollInterval      time.Duration `env:"POLL_INTERVAL,default=1m"`
+	DryRun            bool          `env:"DRY_RUN,default=false"`
 
 	HTTPMaxIdleConns        int    `env:"HTTP_MAX_IDLE_CONNS,default=100"`
 	HTTPMaxIdleConnsPerHost int    `env:"HTTP_MAX_IDLE_CONNS_PER_HOST,default=10"`

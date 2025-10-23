@@ -48,7 +48,7 @@ func main() {
 		},
 	}
 
-	cosmosClient := cosmos.NewClient(cfg.RPCURL, httpClient)
+	cosmosClient := cosmos.NewClient(cfg.APIURL, httpClient)
 	dockerhubClient := dockerhub.NewClient(cfg.DockerHubUser, cfg.DockerHubPassword, httpClient)
 	checker := health.NewChecker(cosmosClient, dockerhubClient, cfg.RepoPath)
 

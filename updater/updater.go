@@ -75,11 +75,12 @@ func (u *Updater) CheckAndProcessUpgrade(ctx context.Context) error {
 
 	var pendingPlans []cosmos.Plan
 	for _, plan := range plans {
-		upgradeHeight, err := strconv.ParseInt(plan.Height, 10, 64)
+		proposalHeight, err := strconv.ParseInt(plan.Height, 10, 64)
 		if err != nil {
 			xlog.Error("failed to parse upgrade height, skipping plan", "plan", plan.Name, "height", plan.Height, "err", err)
 			continue
 		}
+		upgradeHeight := proposalHeight - 1
 
 		if currentHeight >= upgradeHeight {
 			targetTag := u.cfg.TargetPrefix + plan.Name
@@ -116,6 +117,11 @@ func (u *Updater) processUpgrade(ctx context.Context, plan *cosmos.Plan) error {
 	targetTag := u.cfg.TargetPrefix + plan.Name
 
 	xlog.Info("retagging image", "repo", u.cfg.RepoPath, "source", sourceTag, "target", targetTag)
+
+	if u.cfg.DryRun {
+		xlog.Info("dry run enabled, skipping retag")
+		return nil
+	}
 
 	err := u.dockerhubClient.RetagImage(ctx, u.cfg.RepoPath, sourceTag, targetTag)
 	if err != nil {

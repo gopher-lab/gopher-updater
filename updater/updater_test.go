@@ -42,7 +42,7 @@ var _ = Describe("Updater", func() {
 				return plans, nil
 			}
 			mockCosmosClient.getLatestBlockHeightFunc = func(ctx context.Context) (int64, error) {
-				return 101, nil
+				return 100, nil
 			}
 			mockDockerHubClient.tagExistsFunc = func(ctx context.Context, repoPath, tag string) (bool, error) {
 				Expect(tag).To(Equal("mainnet-v1.2.3"))
@@ -115,7 +115,7 @@ var _ = Describe("Updater", func() {
 				return plans, nil
 			}
 			mockCosmosClient.getLatestBlockHeightFunc = func(ctx context.Context) (int64, error) {
-				return 99, nil
+				return 98, nil
 			}
 
 			err := up.CheckAndProcessUpgrade(ctx)
@@ -158,6 +158,32 @@ var _ = Describe("Updater", func() {
 			err := up.CheckAndProcessUpgrade(ctx)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cosmos boom"))
+		})
+
+		Context("with dry run enabled", func() {
+			BeforeEach(func() {
+				cfg.DryRun = true
+			})
+
+			It("should not retag the image if a single upgrade height has been reached and the tag does not exist", func() {
+				plans := []cosmos.Plan{{Name: "v1.2.3", Height: "100"}}
+				mockCosmosClient.getUpgradePlansFunc = func(ctx context.Context) ([]cosmos.Plan, error) {
+					return plans, nil
+				}
+				mockCosmosClient.getLatestBlockHeightFunc = func(ctx context.Context) (int64, error) {
+					return 100, nil
+				}
+				mockDockerHubClient.tagExistsFunc = func(ctx context.Context, repoPath, tag string) (bool, error) {
+					Expect(tag).To(Equal("mainnet-v1.2.3"))
+					return false, nil
+				}
+
+				err := up.CheckAndProcessUpgrade(ctx)
+				Expect(err).ToNot(HaveOccurred())
+
+				retagCalls := mockDockerHubClient.RetagCalls()
+				Expect(retagCalls).To(HaveLen(0))
+			})
 		})
 	})
 })

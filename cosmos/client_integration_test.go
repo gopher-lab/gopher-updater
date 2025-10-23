@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,7 +25,9 @@ var _ = Describe("Client Integration", func() {
 		ctx = context.Background()
 		mux = http.NewServeMux()
 		server = httptest.NewServer(mux)
-		client = cosmos.NewClient(server.URL, server.Client())
+		serverURL, err := url.Parse(server.URL)
+		Expect(err).NotTo(HaveOccurred())
+		client = cosmos.NewClient(serverURL, server.Client())
 	})
 
 	AfterEach(func() {

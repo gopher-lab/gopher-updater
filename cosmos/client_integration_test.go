@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,7 +25,9 @@ var _ = Describe("Client Integration", func() {
 		ctx = context.Background()
 		mux = http.NewServeMux()
 		server = httptest.NewServer(mux)
-		client = cosmos.NewClient(server.URL, server.Client())
+		serverURL, err := url.Parse(server.URL)
+		Expect(err).NotTo(HaveOccurred())
+		client = cosmos.NewClient(serverURL, server.Client())
 	})
 
 	AfterEach(func() {
@@ -33,7 +36,7 @@ var _ = Describe("Client Integration", func() {
 
 	Describe("GetLatestBlockHeight", func() {
 		It("should return the correct block height on a valid response", func() {
-			mux.HandleFunc("/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/cosmos/base/tendermint/v1beta1/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
 				_, err := fmt.Fprint(w, `{"block":{"header":{"height":"12345"}}}`)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -44,7 +47,7 @@ var _ = Describe("Client Integration", func() {
 		})
 
 		It("should return an error on a non-200 status code", func() {
-			mux.HandleFunc("/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/cosmos/base/tendermint/v1beta1/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			})
 
@@ -53,7 +56,7 @@ var _ = Describe("Client Integration", func() {
 		})
 
 		It("should return an error on malformed JSON", func() {
-			mux.HandleFunc("/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/cosmos/base/tendermint/v1beta1/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
 				_, err := fmt.Fprint(w, `{"block":{"header":{"height":malformed}}}`)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -65,28 +68,35 @@ var _ = Describe("Client Integration", func() {
 
 	Describe("GetUpgradePlans", func() {
 		It("should correctly parse and filter for passed software upgrade proposals", func() {
-			mux.HandleFunc("/cosmos/gov/v1beta1/proposals", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/cosmos/gov/v1/proposals", func(w http.ResponseWriter, r *http.Request) {
+				Expect(r.URL.Query().Get("proposal_status")).To(Equal("3"))
 				_, err := fmt.Fprint(w, `{
 					"proposals": [
 						{
 							"status": "PROPOSAL_STATUS_PASSED",
-							"content": {
-								"@type": "/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal",
-								"plan": { "name": "v1.2.3", "height": "100" }
-							}
+							"messages": [
+								{
+									"@type": "/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade",
+									"plan": { "name": "v1.2.3", "height": "100" }
+								}
+							]
 						},
 						{
 							"status": "PROPOSAL_STATUS_REJECTED",
-							"content": {
-								"@type": "/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal",
-								"plan": { "name": "v1.2.4", "height": "200" }
-							}
+							"messages": [
+								{
+									"@type": "/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade",
+									"plan": { "name": "v1.2.4", "height": "200" }
+								}
+							]
 						},
 						{
 							"status": "PROPOSAL_STATUS_PASSED",
-							"content": {
-								"@type": "/cosmos.params.v1beta1.ParameterChangeProposal"
-							}
+							"messages": [
+								{
+									"@type": "/cosmos.params.v1beta1.ParameterChangeProposal"
+								}
+							]
 						}
 					]
 				}`)
@@ -101,7 +111,7 @@ var _ = Describe("Client Integration", func() {
 		})
 
 		It("should return an empty slice when no passed upgrade proposals are found", func() {
-			mux.HandleFunc("/cosmos/gov/v1beta1/proposals", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/cosmos/gov/v1/proposals", func(w http.ResponseWriter, r *http.Request) {
 				_, err := fmt.Fprint(w, `{"proposals": []}`)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -112,7 +122,7 @@ var _ = Describe("Client Integration", func() {
 		})
 
 		It("should return an error on a non-200 status code", func() {
-			mux.HandleFunc("/cosmos/gov/v1beta1/proposals", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/cosmos/gov/v1/proposals", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			})
 

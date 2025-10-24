@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -48,7 +49,7 @@ func main() {
 		},
 	}
 
-	cosmosClient := cosmos.NewClient(cfg.RPCURL, httpClient)
+	cosmosClient := cosmos.NewClient(cfg.APIURL, httpClient)
 	dockerhubClient := dockerhub.NewClient(cfg.DockerHubUser, cfg.DockerHubPassword, httpClient)
 	checker := health.NewChecker(cosmosClient, dockerhubClient, cfg.RepoPath)
 
@@ -81,6 +82,7 @@ func main() {
 func startHTTPServer(cfg *config.Config, checker *health.Checker, cancel context.CancelFunc) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
+	e.Logger.SetOutput(io.Discard)
 
 	// --- Routes ---
 	e.GET("/healthz", func(c echo.Context) error {

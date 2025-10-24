@@ -18,6 +18,7 @@ type Updater struct {
 	cosmosClient    cosmos.ClientInterface
 	dockerhubClient dockerhub.ClientInterface
 	cfg             *config.Config
+	lastHeight      int64
 }
 
 // New creates a new Updater.
@@ -40,7 +41,7 @@ func (u *Updater) Run(ctx context.Context) error {
 
 	xlog.Info("performing initial check for software upgrade proposal")
 	if err := u.CheckAndProcessUpgrade(ctx); err != nil {
-		xlog.Error("failed to process upgrade on initial check", "err", err)
+		xlog.Error("error checking for upgrade on initial check", "err", err)
 	}
 
 	for {
@@ -50,7 +51,7 @@ func (u *Updater) Run(ctx context.Context) error {
 		case <-ticker.C:
 			xlog.Info("checking for software upgrade proposal")
 			if err := u.CheckAndProcessUpgrade(ctx); err != nil {
-				xlog.Error("failed to process upgrade", "err", err)
+				xlog.Error("error checking for upgrade", "err", err)
 			}
 		}
 	}
@@ -68,18 +69,34 @@ func (u *Updater) CheckAndProcessUpgrade(ctx context.Context) error {
 		return nil
 	}
 
+	// We only need to get the height if there are plans to process.
 	currentHeight, err := u.cosmosClient.GetLatestBlockHeight(ctx)
 	if err != nil {
+		// The chain might be halted. Check if we are near an upgrade height.
+		for _, plan := range plans {
+			proposalHeight, pErr := strconv.ParseInt(plan.Height, 10, 64)
+			if pErr != nil {
+				xlog.Error("failed to parse upgrade height for plan, skipping", "plan", plan.Name, "height", plan.Height, "err", pErr)
+				continue
+			}
+
+			if u.lastHeight > 0 && u.lastHeight >= proposalHeight-5 {
+				xlog.Warn("failed to get latest block height, but last known height is within 5 blocks of a passed proposal. Assuming chain has halted for upgrade.", "lastKnownHeight", u.lastHeight, "upgradeHeight", proposalHeight)
+				return u.processUpgrade(ctx, &plan)
+			}
+		}
 		return fmt.Errorf("failed to get latest block height: %w", err)
 	}
+	u.lastHeight = currentHeight
 
 	var pendingPlans []cosmos.Plan
 	for _, plan := range plans {
-		upgradeHeight, err := strconv.ParseInt(plan.Height, 10, 64)
+		proposalHeight, err := strconv.ParseInt(plan.Height, 10, 64)
 		if err != nil {
 			xlog.Error("failed to parse upgrade height, skipping plan", "plan", plan.Name, "height", plan.Height, "err", err)
 			continue
 		}
+		upgradeHeight := proposalHeight - 1
 
 		if currentHeight >= upgradeHeight {
 			targetTag := u.cfg.TargetPrefix + plan.Name
@@ -116,6 +133,11 @@ func (u *Updater) processUpgrade(ctx context.Context, plan *cosmos.Plan) error {
 	targetTag := u.cfg.TargetPrefix + plan.Name
 
 	xlog.Info("retagging image", "repo", u.cfg.RepoPath, "source", sourceTag, "target", targetTag)
+
+	if u.cfg.DryRun {
+		xlog.Info("dry run enabled, skipping retag")
+		return nil
+	}
 
 	err := u.dockerhubClient.RetagImage(ctx, u.cfg.RepoPath, sourceTag, targetTag)
 	if err != nil {

@@ -1,0 +1,41 @@
+services:
+  gopher-node:
+    build:
+      context: ../gopher
+    container_name: gopher-testnet
+    restart: unless-stopped
+    environment:
+      - DAEMON_RESTART_AFTER_UPGRADE=false
+      - ALICE_MNEMONIC=${ALICE_MNEMONIC:-}
+      - BOB_MNEMONIC=${BOB_MNEMONIC:-}
+    ports:
+      - "26656:26656"  # P2P
+      - "26657:26657"  # RPC
+      - "1317:1317"   # REST API
+      - "9090:9090"   # gRPC
+    volumes:
+      - gopher-data:/home/gopher/.gopher
+    networks:
+      - gopher-network
+
+  gopher-updater:
+    build: .
+    container_name: gopher-updater
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: "debug"
+      DRY_RUN: "true"
+      API_URL: "http://gopher-node:1317"
+      REPO_PATH: "test/test"
+      SOURCE_PREFIX: "release-"
+      TARGET_PREFIX: "testnet-"
+      POLL_INTERVAL: "1s"
+    networks:
+      - gopher-network
+
+volumes:
+  gopher-data:
+
+networks:
+  gopher-network:
+    driver: bridge

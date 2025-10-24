@@ -5,10 +5,7 @@ services:
     container_name: gopher-testnet
     restart: unless-stopped
     environment:
-      - DAEMON_NAME=gopherd
-      - DAEMON_RESTART_AFTER_UPGRADE=true
-      - DAEMON_ALLOW_DOWNLOAD_BINARIES=false
-      - UNSAFE_SKIP_BACKUP=true
+      - DAEMON_RESTART_AFTER_UPGRADE=false
       - ALICE_MNEMONIC=${ALICE_MNEMONIC:-}
       - BOB_MNEMONIC=${BOB_MNEMONIC:-}
     ports:

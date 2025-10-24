@@ -1,12 +1,16 @@
 package cosmos
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"github.com/gopher-lab/gopher-updater/pkg/xlog"
 )
 
 // ClientInterface defines the methods to interact with a Cosmos chain.
@@ -121,6 +125,15 @@ func (c *Client) GetUpgradePlans(ctx context.Context) ([]Plan, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
+
+	// Read the body for debugging
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	xlog.Debug("received proposals response", "body", string(bodyBytes))
+	// Replace the body so it can be read again by the JSON decoder
+	resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	var proposalsResp ProposalsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&proposalsResp); err != nil {

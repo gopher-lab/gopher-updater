@@ -26,6 +26,7 @@ services:
     container_name: gopher-updater
     restart: unless-stopped
     environment:
+      LOG_LEVEL: "debug"
       DRY_RUN: "true"
       API_URL: "http://gopher-node:1317"
       REPO_PATH: "test/test"

@@ -6,3 +6,4 @@ localai-models/
 CLAUDE.md
 GEMINI.md
 /gopher-updater
+docker-compose.yml

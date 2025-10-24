@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -11,8 +12,8 @@ import (
 // Config holds the application configuration.
 type Config struct {
 	APIURL            *url.URL      `env:"API_URL,default=http://localhost:1317"`
-	DockerHubUser     string        `env:"DOCKERHUB_USER,required"`
-	DockerHubPassword string        `env:"DOCKERHUB_PASSWORD,required"`
+	DockerHubUser     string        `env:"DOCKERHUB_USER"`
+	DockerHubPassword string        `env:"DOCKERHUB_PASSWORD"`
 	RepoPath          string        `env:"REPO_PATH,required"`
 	SourcePrefix      string        `env:"SOURCE_PREFIX,default=release-"`
 	TargetPrefix      string        `env:"TARGET_PREFIX,required"`
@@ -31,5 +32,15 @@ func New(ctx context.Context) (*Config, error) {
 	if err := envconfig.Process(ctx, &cfg); err != nil {
 		return nil, err
 	}
+
+	if !cfg.DryRun {
+		if cfg.DockerHubUser == "" {
+			return nil, fmt.Errorf("DOCKERHUB_USER is required when not in dry-run mode")
+		}
+		if cfg.DockerHubPassword == "" {
+			return nil, fmt.Errorf("DOCKERHUB_PASSWORD is required when not in dry-run mode")
+		}
+	}
+
 	return &cfg, nil
 }

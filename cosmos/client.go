@@ -96,7 +96,12 @@ type ProposalsResponse struct {
 
 // GetUpgradePlans finds all passed software upgrade proposals and returns their plans.
 func (c *Client) GetUpgradePlans(ctx context.Context) ([]Plan, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.rpcURL.JoinPath("/cosmos/gov/v1beta1/proposals").String(), nil)
+	reqURL := c.rpcURL.JoinPath("/cosmos/gov/v1/proposals")
+	q := reqURL.Query()
+	q.Set("proposal_status", "3") // PROPOSAL_STATUS_PASSED
+	reqURL.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

@@ -92,8 +92,8 @@ type Proposal struct {
 
 // Message is a generic message in a proposal.
 type Message struct {
-	Type string `json:"@type"`
-	Plan Plan   `json:"plan"`
+	Type    string          `json:"@type"`
+	Content ProposalContent `json:"content"`
 }
 
 type ProposalsResponse struct {
@@ -131,8 +131,8 @@ func (c *Client) GetUpgradePlans(ctx context.Context) ([]Plan, error) {
 	for _, p := range proposalsResp.Proposals {
 		if p.Status == "PROPOSAL_STATUS_PASSED" {
 			for _, msg := range p.Messages {
-				if msg.Type == "/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade" {
-					plans = append(plans, msg.Plan)
+				if msg.Type == "/cosmos.gov.v1.MsgExecLegacyContent" && msg.Content.Type == "/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal" {
+					plans = append(plans, msg.Content.Plan)
 				}
 			}
 		}

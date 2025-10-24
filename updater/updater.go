@@ -18,6 +18,7 @@ type Updater struct {
 	cosmosClient    cosmos.ClientInterface
 	dockerhubClient dockerhub.ClientInterface
 	cfg             *config.Config
+	lastHeight      int64
 }
 
 // New creates a new Updater.
@@ -58,6 +59,27 @@ func (u *Updater) Run(ctx context.Context) error {
 
 // CheckAndProcessUpgrade fetches all passed upgrade plans and processes the next available one.
 func (u *Updater) CheckAndProcessUpgrade(ctx context.Context) error {
+	currentHeight, err := u.cosmosClient.GetLatestBlockHeight(ctx)
+	if err != nil {
+		// If we can't get the height, we should check if we are near a known upgrade.
+		if u.lastHeight > 0 {
+			plans, pErr := u.cosmosClient.GetUpgradePlans(ctx)
+			if pErr != nil {
+				// If we can't get proposals either, we can't do anything.
+				return fmt.Errorf("failed to get latest block height and proposals: height_err=%w, proposal_err=%v", err, pErr)
+			}
+			for _, plan := range plans {
+				proposalHeight, _ := strconv.ParseInt(plan.Height, 10, 64)
+				if proposalHeight > 0 && u.lastHeight >= proposalHeight-5 {
+					xlog.Warn("failed to get latest block height, but we are within 5 blocks of a known upgrade. Assuming chain is halted and proceeding.", "lastKnownHeight", u.lastHeight, "upgradeHeight", proposalHeight)
+					return u.processUpgrade(ctx, &plan)
+				}
+			}
+		}
+		return fmt.Errorf("failed to get latest block height: %w", err)
+	}
+	u.lastHeight = currentHeight
+
 	plans, err := u.cosmosClient.GetUpgradePlans(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get upgrade plans: %w", err)
@@ -66,15 +88,6 @@ func (u *Updater) CheckAndProcessUpgrade(ctx context.Context) error {
 	if len(plans) == 0 {
 		xlog.Info("no passed software upgrade proposals found")
 		return nil
-	}
-
-	currentHeight, err := u.cosmosClient.GetLatestBlockHeight(ctx)
-	if err != nil {
-		// This can happen if the chain halts for the upgrade between the proposal check and this call.
-		// We'll log a warning and proceed, assuming the upgrade is happening.
-		xlog.Warn("failed to get latest block height, proceeding with upgrade check", "err", err)
-		// Set a sentinel height that is guaranteed to be 'after' any valid proposal height
-		currentHeight = -1
 	}
 
 	var pendingPlans []cosmos.Plan
@@ -86,9 +99,7 @@ func (u *Updater) CheckAndProcessUpgrade(ctx context.Context) error {
 		}
 		upgradeHeight := proposalHeight - 1
 
-		// If currentHeight is our sentinel value, it means the chain is down,
-		// so we should assume any passed proposal is ready to be processed.
-		if currentHeight == -1 || currentHeight >= upgradeHeight {
+		if currentHeight >= upgradeHeight {
 			targetTag := u.cfg.TargetPrefix + plan.Name
 			exists, err := u.dockerhubClient.TagExists(ctx, u.cfg.RepoPath, targetTag)
 			if err != nil {

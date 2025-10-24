@@ -29,7 +29,7 @@ services:
       REPO_PATH: "test/test"
       SOURCE_PREFIX: "release-"
       TARGET_PREFIX: "testnet-"
-      POLL_INTERVAL: "5s"
+      POLL_INTERVAL: "1s"
     networks:
       - gopher-network
 

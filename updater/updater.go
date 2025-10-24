@@ -59,27 +59,6 @@ func (u *Updater) Run(ctx context.Context) error {
 
 // CheckAndProcessUpgrade fetches all passed upgrade plans and processes the next available one.
 func (u *Updater) CheckAndProcessUpgrade(ctx context.Context) error {
-	currentHeight, err := u.cosmosClient.GetLatestBlockHeight(ctx)
-	if err != nil {
-		// If we can't get the height, we should check if we are near a known upgrade.
-		if u.lastHeight > 0 {
-			plans, pErr := u.cosmosClient.GetUpgradePlans(ctx)
-			if pErr != nil {
-				// If we can't get proposals either, we can't do anything.
-				return fmt.Errorf("failed to get latest block height and proposals: height_err=%w, proposal_err=%v", err, pErr)
-			}
-			for _, plan := range plans {
-				proposalHeight, _ := strconv.ParseInt(plan.Height, 10, 64)
-				if proposalHeight > 0 && u.lastHeight >= proposalHeight-5 {
-					xlog.Warn("failed to get latest block height, but we are within 5 blocks of a known upgrade. Assuming chain is halted and proceeding.", "lastKnownHeight", u.lastHeight, "upgradeHeight", proposalHeight)
-					return u.processUpgrade(ctx, &plan)
-				}
-			}
-		}
-		return fmt.Errorf("failed to get latest block height: %w", err)
-	}
-	u.lastHeight = currentHeight
-
 	plans, err := u.cosmosClient.GetUpgradePlans(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get upgrade plans: %w", err)
@@ -89,6 +68,26 @@ func (u *Updater) CheckAndProcessUpgrade(ctx context.Context) error {
 		xlog.Info("no passed software upgrade proposals found")
 		return nil
 	}
+
+	// We only need to get the height if there are plans to process.
+	currentHeight, err := u.cosmosClient.GetLatestBlockHeight(ctx)
+	if err != nil {
+		// The chain might be halted. Check if we are near an upgrade height.
+		for _, plan := range plans {
+			proposalHeight, pErr := strconv.ParseInt(plan.Height, 10, 64)
+			if pErr != nil {
+				xlog.Error("failed to parse upgrade height for plan, skipping", "plan", plan.Name, "height", plan.Height, "err", pErr)
+				continue
+			}
+
+			if u.lastHeight > 0 && u.lastHeight >= proposalHeight-5 {
+				xlog.Warn("failed to get latest block height, but last known height is within 5 blocks of a passed proposal. Assuming chain has halted for upgrade.", "lastKnownHeight", u.lastHeight, "upgradeHeight", proposalHeight)
+				return u.processUpgrade(ctx, &plan)
+			}
+		}
+		return fmt.Errorf("failed to get latest block height: %w", err)
+	}
+	u.lastHeight = currentHeight
 
 	var pendingPlans []cosmos.Plan
 	for _, plan := range plans {

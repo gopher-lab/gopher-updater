@@ -36,7 +36,7 @@ var _ = Describe("Client Integration", func() {
 
 	Describe("GetLatestBlockHeight", func() {
 		It("should return the correct block height on a valid response", func() {
-			mux.HandleFunc("/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/cosmos/base/tendermint/v1beta1/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
 				_, err := fmt.Fprint(w, `{"block":{"header":{"height":"12345"}}}`)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -47,7 +47,7 @@ var _ = Describe("Client Integration", func() {
 		})
 
 		It("should return an error on a non-200 status code", func() {
-			mux.HandleFunc("/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/cosmos/base/tendermint/v1beta1/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			})
 
@@ -56,7 +56,7 @@ var _ = Describe("Client Integration", func() {
 		})
 
 		It("should return an error on malformed JSON", func() {
-			mux.HandleFunc("/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/cosmos/base/tendermint/v1beta1/blocks/latest", func(w http.ResponseWriter, r *http.Request) {
 				_, err := fmt.Fprint(w, `{"block":{"header":{"height":malformed}}}`)
 				Expect(err).NotTo(HaveOccurred())
 			})

@@ -52,7 +52,7 @@ type LatestBlockResponse struct {
 
 // GetLatestBlockHeight returns the latest block height of the chain.
 func (c *Client) GetLatestBlockHeight(ctx context.Context) (int64, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.rpcURL.JoinPath("/blocks/latest").String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.rpcURL.JoinPath("/cosmos/base/tendermint/v1beta1/blocks/latest").String(), nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create request: %w", err)
 	}

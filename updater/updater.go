@@ -40,7 +40,7 @@ func (u *Updater) Run(ctx context.Context) error {
 
 	xlog.Info("performing initial check for software upgrade proposal")
 	if err := u.CheckAndProcessUpgrade(ctx); err != nil {
-		xlog.Error("failed to process upgrade on initial check", "err", err)
+		xlog.Error("error checking for upgrade on initial check", "err", err)
 	}
 
 	for {
@@ -50,7 +50,7 @@ func (u *Updater) Run(ctx context.Context) error {
 		case <-ticker.C:
 			xlog.Info("checking for software upgrade proposal")
 			if err := u.CheckAndProcessUpgrade(ctx); err != nil {
-				xlog.Error("failed to process upgrade", "err", err)
+				xlog.Error("error checking for upgrade", "err", err)
 			}
 		}
 	}

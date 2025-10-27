@@ -6,7 +6,7 @@ replace github.com/gopher-lab/gopher-updater => .
 
 require (
 	github.com/labstack/echo/v4 v4.13.4
-	github.com/onsi/ginkgo/v2 v2.26.0
+	github.com/onsi/ginkgo/v2 v2.27.1
 	github.com/onsi/gomega v1.38.2
 	github.com/prometheus/client_golang v1.23.2
 	github.com/sethvargo/go-envconfig v1.3.0
